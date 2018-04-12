@@ -44,3 +44,6 @@ https://github.com/yangshun/front-end-interview-handbook/blob/master/Translation
 
 ## 前端开发面试题
 https://github.com/markyun/My-blog/tree/master/Front-end-Developer-Questions/Questions-and-Answers
+
+##豪情的前端知识
+https://github.com/jsfront/src/blob/master/qq.md
