@@ -10,7 +10,7 @@
 	data structures:                -->>ten days
 	es7-8:                          -->>five days
  
- #### total:one hundred and thirty-seven days
+ #### total : one hundred and thirty-seven days
  ---
 ## read the source code（not necessary）
 	backbone.js                     -->>ten days
@@ -22,25 +22,25 @@
 	require.js                      -->>ten days
 	i18next                         -->>ten days
  
- total:eighty-seven days
+ #### total : eighty-seven days
  ---
 ## coding
 	todolist                        -->>ten days
 	music box                       -->>one month
 	my blog                         -->>five months
  
- total:one hundred and nighty days
+ #### total : one hundred and nighty days
   ---
 ## back-end
 	arch-linux                      -->>two months
     node                            -->>two months
 	mysql / mongodb                 -->>one month
  
- total:one hundred and fifty days
+ #### total : one hundred and fifty days
  ---
 ## other improve
  betterScroll
 
  ---
 ### work on several assignments at once.
-### total:six months.
+### total : six months.
