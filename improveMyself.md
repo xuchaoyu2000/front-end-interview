@@ -1,8 +1,8 @@
 # how to improve myself?
 ## based on books
 	js:<<js高级程序设计>>            -->>one month   
-		<<js权威指南>>               -->>one month
-		<<JavaScript设计模式>>       -->>one month
+	   <<js权威指南>>               -->>one month
+	   <<JavaScript设计模式>>       -->>one month
 	http:<<图解http>>               -->>seven days
 	css:<<CSS权威指南>>             -->>seven days
 	es6:<<es6入门>>                 -->>ten days
