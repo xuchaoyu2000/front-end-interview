@@ -4,6 +4,8 @@
 [Sass/Scss学习总结](https://github.com/xuchaoyu2000/myMind/blob/master/Scss.md)
 ### JS部分学习
 [Canvas学习总结](https://github.com/xuchaoyu2000/myMind/blob/master/Canvas.md)
+
+[FCC里的所有算法学习ES6总结](https://github.com/xuchaoyu2000/myMind/blob/master/Code.md)
 ### 杂项学习
 [MarkdownPad2使用心得](https://github.com/xuchaoyu2000/myMind/blob/master/MarkdownPad2.md)
 
