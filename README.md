@@ -1,9 +1,11 @@
 # 我的前端宝典
 ## 我的学习宝典
 ### CSS部分学习
-[Sass/Scss使用宝典](https://github.com/xuchaoyu2000/myMind/blob/master/Scss.md)
+[Sass/Scss学习总结](https://github.com/xuchaoyu2000/myMind/blob/master/Scss.md)
+### JS部分学习
+[Canvas学习总结](https://github.com/xuchaoyu2000/myMind/blob/master/Canvas.md)
 ### 杂项学习
-[MarkdownPad2使用宝典](https://github.com/xuchaoyu2000/myMind/blob/master/MarkdownPad2.md)
+[MarkdownPad2使用心得](https://github.com/xuchaoyu2000/myMind/blob/master/MarkdownPad2.md)
 
 ### 规范问题
 [ESLint规范问题](https://github.com/xuchaoyu2000/myMind/blob/master/ESLint.md)
