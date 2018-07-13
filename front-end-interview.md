@@ -47,3 +47,25 @@ https://github.com/markyun/My-blog/tree/master/Front-end-Developer-Questions/Que
 
 ## 豪情的前端知识
 https://github.com/jsfront/src/blob/master/qq.md
+
+https://github.com/brickspert/blog/issues/16
+
+https://segmentfault.com/a/1190000014339753?utm_source=index-hottest
+
+http://jiongks.name/blog/vue-code-review/
+
+https://blog.csdn.net/lemon_zhao/article/details/55510589
+
+https://juejin.im/post/5ae91aae5188256737063046
+
+https://juejin.im/post/5abdd6f6f265da23793c4458
+
+https://juejin.im/post/5ac61da66fb9a028c71eae1b
+
+https://www.imooc.com/article/24191?block_id=tuijian_wz
+
+https://www.imooc.com/article/23907
+
+https://github.com/opendigg/awesome-github-vue#Demo%E7%A4%BA%E4%BE%8B
+
+https://www.cnblogs.com/laoho/p/7726542.html
