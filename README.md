@@ -9,7 +9,9 @@
 [FCC里的所有算法学习ES6总结](https://github.com/xuchaoyu2000/myMind/blob/master/js/Code.md)
 ### 杂项学习
 [MarkdownPad2使用心得](https://github.com/xuchaoyu2000/myMind/blob/master/other/MarkdownPad2.md)
-
+[Mac使用心得](https://github.com/xuchaoyu2000/myMind/blob/master/other/Mac/MacUsing.md)
+[Mac中的git&github](https://github.com/xuchaoyu2000/myMind/blob/master/other/Mac/git&github.md)
+[Mac中使用Maven&Jetty](https://github.com/xuchaoyu2000/myMind/blob/master/other/Mac/maven&jetty.md)
 ### 规范问题
 [ESLint规范问题](https://github.com/xuchaoyu2000/myMind/blob/master/vue/ESLint.md)
 
