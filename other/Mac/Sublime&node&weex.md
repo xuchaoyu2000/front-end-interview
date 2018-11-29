@@ -1,4 +1,4 @@
-# Sublime & node & weex
+# Sublime&node&weex
 ## Sublime
 - http://www.sublimetext.com/3
 
