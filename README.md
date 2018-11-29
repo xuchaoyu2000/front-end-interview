@@ -12,7 +12,7 @@
 - [MarkdownPad2使用心得](https://github.com/xuchaoyu2000/myMind/blob/master/other/MarkdownPad2.md)
 - [Git使用中出过的错](https://github.com/xuchaoyu2000/myMind/blob/master/other/GitError.md)
 - [Mac使用心得](https://github.com/xuchaoyu2000/myMind/blob/master/other/Mac/MacUsing.md)
-- [Mac中的sublime&node&weex](https://github.com/xuchaoyu2000/myMind/blob/master/other/Mac/Sublime&node&weex.md)
+- [Mac中的sublime&node&weex](https://github.com/xuchaoyu2000/myMind/blob/master/other/Mac/Sublime & node & weex.md)
 - [Mac中的git&github](https://github.com/xuchaoyu2000/myMind/blob/master/other/Mac/git&github.md)
 - [Mac中使用Maven&Jetty](https://github.com/xuchaoyu2000/myMind/blob/master/other/Mac/maven&jetty.md)
 
