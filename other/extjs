@@ -1,0 +1,2361 @@
+# extjs
+## 重复密码验证
+```js
+Ext.apply(Ext.form.VTypes, {
+    repetition: function(val, field) {     //返回true，则验证通过，否则验证失败
+        if (field.repetition) {               //如果表单有使用repetition配置，repetition配置是一个JSON对象，该对象提供了一个名为targetCmpId的字段，该字段指定了需要进行比较的另一个组件ID。
+            var cmp = Ext.getCmp(field.repetition.targetCmpId);   //通过targetCmpId的字段查找组件
+            if (Ext.isEmpty(cmp)) {      //如果组件（表单）不存在，提示错误
+                Ext.MessageBox.show({
+                    title: '错误',
+                    msg: '发生异常错误，指定的组件未找到',
+                    icon: Ext.Msg.ERROR,
+                    buttons: Ext.Msg.OK
+                });
+                return false;
+            }
+            if (val == cmp.getValue()) {  //取得目标组件（表单）的值，与宿主表单的值进行比较。
+                return true;
+            } else {
+                return false;
+            }
+        }
+    },
+    repetitionText: '两次密码不一致',
+    pwd:function (val, field) {
+        var reg = /^\w{6,22}$/;
+        if(!reg.test(val)) {
+            return false;
+        }
+        return true;
+    },
+    pwdText: '支持字母、数字、“_”的组合,6-20个字符！'
+});
+```
+
+## 增加click事件
+```js
+Ext.override(Ext.form.Label, {
+    clickEvent: 'click',
+    onRender: function () {
+        var me = this,
+            addOnclick,
+            btn,
+            btnListeners;
+
+        me.callParent(arguments);
+
+        // Set btn as a local variable for easy access
+        me.el.on({
+            click: me.onClick,
+            scope: me
+        });
+    },
+    doPreventDefault: function (e) {
+        if (e && (this.preventDefault || (this.disabled && this.getHref()))) {
+            e.preventDefault();
+        }
+    },
+    onClick: function (e) {
+        var me = this;
+        me.doPreventDefault(e);
+        // Click may have destroyed the button
+        if (me.fireEvent('click', me, e) !== false && !me.destroyed) {
+            Ext.callback(me.handler, me.scope, [me, e], 0, me);
+        }
+    }
+});
+
+Ext.override(Ext.form.field.Picker, {
+    doAlign: function () {
+        var me = this,
+            picker = me.picker,
+            aboveSfx = '-above',
+            isAbove;
+
+        // Align to the trigger wrap because the border isn't always on the input element, which
+        // can cause the offset to be off
+        //me.picker.alignTo(me.triggerWrap, me.pickerAlign, me.pickerOffset);
+        // add the {openCls}-above class if the picker was aligned above
+        // the field due to hitting the bottom of the viewport
+        isAbove = picker.el.getY() < me.inputEl.getY();
+        me.bodyEl[isAbove ? 'addCls' : 'removeCls'](me.openCls + aboveSfx);
+        picker[isAbove ? 'addCls' : 'removeCls'](picker.baseCls + aboveSfx);
+
+        var xy = me.triggerWrap.getXY(),
+            viewPort = Ext.Element,
+            isReset = false;
+
+        xy[1] = xy[1] + me.getHeight();
+        //if (picker.getX() + picker.getWidth() > viewPort.getViewportWidth()) {
+        if (xy[0] + picker.getWidth() > viewPort.getViewportWidth()) {
+            xy[0] = viewPort.getViewportWidth() - picker.getWidth();
+        }
+        if (xy[1] + picker.getHeight() > viewPort.getViewportHeight()) {
+            xy[1] = xy[1] - picker.getHeight() - me.getHeight();
+        }
+        //isReset = true;
+        //}
+
+        //if (isReset) {
+        me.picker.setXY(xy);
+        //}
+    }
+});
+
+Ext.define('Nhl.base.MainController', {
+    extend: 'Ext.app.ViewController',
+
+    requires: [
+        'Ext.window.MessageBox'
+    ],
+
+    /**
+     * main render后执行
+     */
+    mainRender: function () {
+        var me = this;
+
+        Ext.History.init();
+        Ext.History.on('change', function (code) {
+            var mid = code;
+            if (!mid) {
+                mid = 'userlist';
+            }
+            me.openNewTab(mid);
+        });
+
+        var token = Ext.History.getToken();
+        if (!token || token.toString() === '0') {
+            token = "userlist";
+        }
+
+        if (token) {
+            var exp = setInterval(function () {
+                clearInterval(exp);
+                me.openNewTab(token);
+            }, 30);
+        }
+    },
+
+    openNewTab: function (menuId, data) {
+        var me = this,
+            view = me.getView(),
+            menuData,
+            main = view.down(me.xtypeStartWith + "-maintab"),
+            // treelist = view.down(me.xtypeStartWith + '-mainleft').down('treelist'),
+            // store = treelist.getStore(),
+            record,className,cmp;
+        me.deSelectMenuById(me.lastSelectedRecord);
+        if(menuId.indexOf("?") > 0){
+            menuId = menuId.split("?")[0];
+        }
+        for(var i=0;i<viewSet.tree.length;i++){
+            if(viewSet.tree[i].id.toString()==menuId.toString()){
+                className = viewSet.tree[i].view;
+            }
+        }
+
+        me.selectMenuById(menuId);
+        //改变右侧panel内容
+        main.removeAll(true);
+
+        //className = Ext.ClassManager.getNameByAlias('widget.'+menuId);//UumApp.view.sys.suspend.Suspend
+        //console.log(className)
+        //ViewClass = Ext.ClassManager.get(className);
+        //cmp = new ViewClass();
+        var cmp = Ext.create(className, {});
+        main.add(cmp);
+    },
+
+    deSelectMenuById: function (record) {
+        var me = this,
+            treelist = me.getView().down('treelist');
+        if (record) {
+            treelist.getItem(record).updateSelected(false);
+        }
+    },
+    selectMenuById: function (mid) {
+        var me = this,
+            treelist = me.getView().down('treelist'),
+            treelistStore = treelist.getStore(),
+            record;
+        var token = Ext.History.getToken().split('?')[0],
+            parentId,routeId;
+        for(var i=0;i<viewSet.tree.length;i++){
+            if(viewSet.tree[i].id == token){
+                parentId = viewSet.tree[i].parentId;
+                routeId = viewSet.tree[i].routeId;
+            }
+        }
+        for(var j=0;j<treelistStore.getRootNode().childNodes.length;j++){
+            if(treelistStore.getRootNode().childNodes[j].id==parentId){
+                treelistStore.getRootNode().childNodes[j].expand();
+            }
+        }
+        record = treelistStore.getAt(treelistStore.findBy(function (record) {
+            return record.get('id') == routeId;
+        }));
+        if (record) {
+            treelist.getItem(record).updateSelected(true);
+            me.lastSelectedRecord = record;
+        }
+    },
+
+
+    /**
+     * 左菜单样式切换
+     */
+    toggleMenu: function (btn,pressed) {
+        var me = this,
+            treelist = me.getView().down('treelist'),
+            ct = treelist.ownerCt;
+
+        if (me.pressed === undefined) {
+            me.pressed = false;
+        }
+
+        // Ext.suspendLayouts();
+        treelist.setMicro(!me.pressed);
+        if (pressed) {
+            this.oldWidth = ct.width;
+            ct.setWidth(44);
+            btn.setIconCls('fa fa-list');
+        } else {
+            ct.setWidth(this.oldWidth);
+            btn.setIconCls('fa fa-align-justify');
+        }
+        // Cookie.set(AppConfig.cookieStartWith + "main-left-panel-micro", !me.pressed, 365);
+
+        me.pressed = !me.pressed;
+        if (Ext.isIE8) {
+            this.repaintList(treelist, !me.pressed);
+        }
+        // //触发多分辨率兼容更新
+        // Ext.GlobalEvents.fireEvent('resize');
+        // Ext.resumeLayouts(true);
+    },
+
+    repaintList: function(treelist, microMode) {
+        treelist.getStore().getRoot().cascadeBy(function(node) {
+            var item, toolElement;
+
+            item = treelist.getItem(node);
+
+            if (item && item.isTreeListItem) {
+                if (microMode) {
+                    toolElement = item.getToolElement();
+
+                    if (toolElement && toolElement.isVisible(true)) {
+                        toolElement.syncRepaint();
+                    }
+                }
+                else {
+                    if (item.element.isVisible(true)) {
+                        item.iconElement.syncRepaint();
+                        item.expanderElement.syncRepaint();
+                    }
+                }
+            }
+        });
+    },
+
+    /**
+     * 主框架大小调整事件
+     */
+    mainResize: function () {
+        Ext.util.CSS.removeStyleSheet('x-treelist-item-floated-height');
+        Ext.util.CSS.createStyleSheet(
+            '.x-treelist-nav .x-treelist-item-floated .x-treelist-container{max-height:' + (this.getView().getHeight() - 36) + 'px;overflow-y:auto;}',
+            'x-treelist-item-floated-height');
+        return true;
+    }
+});
+
+Ext.define('Nhl.ux.MultiComboBox', {
+    extend: 'Ext.form.ComboBox',
+    alias: 'widget.multicombobox',
+    xtype: 'multicombobox',
+    initComponent: function(){
+        this.multiSelect = true;
+        this.listConfig = {
+            itemTpl : Ext.create('Ext.XTemplate',
+                '<input type=checkbox>{name}'),
+            onItemSelect: function(record) {
+                var node = this.getNode(record);
+                if (node) {
+                    Ext.fly(node).addCls(this.selectedItemCls);
+
+                    var checkboxs = node.getElementsByTagName("input");
+                    if(checkboxs!=null)
+                    {
+                        var checkbox = checkboxs[0];
+                        checkbox.checked = true;
+                    }
+                }
+            },
+            listeners:{
+                itemclick:function(view, record, item, index, e, eOpts ){
+                    var isSelected = view.isSelected(item);
+                    var checkboxs = item.getElementsByTagName("input");
+                    if(checkboxs!=null)
+                    {
+                        var checkbox = checkboxs[0];
+                        if(!isSelected)
+                        {
+                            checkbox.checked = true;
+                        }else{
+                            checkbox.checked = false;
+                        }
+                    }
+                }
+            }
+        }
+        this.callParent();
+    }
+});
+
+```
+
+## 修改日期组件
+```js
+Ext.override(Ext.picker.Month, {
+    renderTpl: [
+        '<div id="{id}-bodyEl" data-ref="bodyEl" class="{baseCls}-body">',
+        '<div id="{id}-amonthEl" data-ref="monthEl" class="{baseCls}-months">',
+        '<tpl for="months">',
+        '<div class="{parent.baseCls}-item {parent.baseCls}-month">',
+        '<a style="{parent.monthStyle}" role="button" hidefocus="on" class="{parent.baseCls}-item-inner">{.}</a>',
+        '</div>',
+        '</tpl>',
+        '</div>',
+        '<div id="{id}-yearEl" data-ref="yearEl" class="{baseCls}-years">',
+        '<div class="{baseCls}-yearnav">',
+        '<div class="{baseCls}-yearnav-button-ct">',
+        '<a id="{id}-prevEl" data-ref="prevEl" class="{baseCls}-yearnav-button {baseCls}-yearnav-prev" hidefocus="on" role="button"></a>',
+        '</div>',
+        '<div class="{baseCls}-yearnav-button-ct">',
+        '<a id="{id}-nextEl" data-ref="nextEl" class="{baseCls}-yearnav-button {baseCls}-yearnav-next" hidefocus="on" role="button"></a>',
+        '</div>',
+        '</div>',
+        '<tpl for="years">',
+        '<div class="{parent.baseCls}-item {parent.baseCls}-year">',
+        '<a hidefocus="on" class="{parent.baseCls}-item-inner" role="button">{.}</a>',
+        '</div>',
+        '</tpl>',
+        '</div>',
+        '<div class="' + Ext.baseCSSPrefix + 'clear"></div>',
+        '<tpl if="showButtons">',
+        '<div class="{baseCls}-buttons">{%',
+        'var me=values.$comp, cancelBtn=me.cancelBtn, okBtn=me.okBtn;',
+        'cancelBtn.ownerLayout = okBtn.ownerLayout = me.componentLayout;',
+        'cancelBtn.ownerCt = okBtn.ownerCt = me;',
+        'Ext.DomHelper.generateMarkup(cancelBtn.getRenderTree(), out);',
+        'Ext.DomHelper.generateMarkup(okBtn.getRenderTree(), out);',
+        '%}</div>',
+        '</tpl>',
+        '</div>'
+    ],
+
+    beforeRender: function(){
+        var me = this,
+            i = 0,
+            months = [],
+            shortName = Ext.Date.getShortMonthName,
+            monthLen = me.monthOffset,
+            margin = me.monthMargin,
+            style = '';
+
+        if (me.padding && !me.width) {
+            me.cacheWidth();
+        }
+
+        me.callParent();
+
+        for (; i < monthLen * 2; ++i) {
+            months.push(shortName(i));
+        }
+
+        if (Ext.isDefined(margin)) {
+            style = 'margin: 0 ' + margin + 'px;';
+        }
+
+        Ext.apply(me.renderData, {
+            months: months,
+            years: me.getYears(),
+            showButtons: me.showButtons,
+            monthStyle: style
+        });
+    },
+
+    getYears: function(){
+        var me = this,
+            offset = me.yearOffset,
+            start = me.activeYear, // put the "active" year on the left
+            end = start + offset,
+            i = start,
+            years = [];
+
+        for (; i < end + offset; ++i) {
+            years.push(i);
+        }
+
+        return years;
+    },
+
+    updateBody: function(){
+        var me = this,
+            years = me.years,
+            months = me.months,
+            yearNumbers = me.getYears(),
+            cls = me.selectedCls,
+            value = me.getYear(null),
+            month = me.value[0],
+            monthOffset = me.monthOffset,
+            year,
+            yearItems, y, yLen, el;
+
+        if (me.rendered) {
+            years.removeCls(cls);
+            months.removeCls(cls);
+
+            yearItems = years.elements;
+            yLen      = yearItems.length;
+
+            for (y = 0; y < yLen; y++) {
+                el = Ext.fly(yearItems[y]);
+
+                year = yearNumbers[y];
+                el.dom.innerHTML = year;
+                if (year === value) {
+                    el.addCls(cls);
+                }
+            }
+            if (month !== null) {
+                months.item(month).addCls(cls);
+            }
+        }
+    },
+
+    resolveOffset: function(index,offset){
+        return index
+    }
+});
+
+Ext.define('Nhl.ux.form.DateNewField', {
+    extend: 'Ext.form.field.Date',
+    alias: 'widget.datenewfield',
+    requires: ['Ext.form.field.Date'],
+    format: 'Y-m-d H:i:s',
+    createPicker: function () {
+        var me = this,
+            format = Ext.String.format,
+            pickerConfig;
+
+        pickerConfig = {
+            pickerField: me,
+            floating: true,
+            preventRefocus: true,
+            hidden: true,
+            minDate: me.minValue,
+            maxDate: me.maxValue,
+            disabledDatesRE: me.disabledDatesRE,
+            disabledDatesText: me.disabledDatesText,
+            ariaDisabledDatesText: me.ariaDisabledDatesText,
+            disabledDays: me.disabledDays,
+            disabledDaysText: me.disabledDaysText,
+            ariaDisabledDaysText: me.ariaDisabledDaysText,
+            format: me.format,
+            showToday: false,//me.showToday,
+            startDay: me.startDay,
+            minText: format(me.minText, me.formatDate(me.minValue)),
+            ariaMinText: format(me.ariaMinText, me.formatDate(me.minValue, me.ariaFormat)),
+            maxText: format(me.maxText, me.formatDate(me.maxValue)),
+            ariaMaxText: format(me.ariaMaxText, me.formatDate(me.maxValue, me.ariaFormat)),
+            listeners: {
+                scope: me,
+                select: me.onSelect
+            },
+            keyNavConfig: {
+                esc: function () {
+                    me.inputEl.focus();
+                    me.collapse();
+                }
+            }
+        };
+
+        me.originalCollapse = me.collapse;
+        pickerConfig.listeners.show = {
+            fn: function () {
+                this.picker.el.on({
+                    mousedown: function () {
+                        this.collapse = Ext.emptyFn;
+                    },
+                    mouseup: function () {
+                        this.collapse = this.originalCollapse;
+                    },
+                    scope: this
+                });
+            }
+        }
+        // Create floating Picker BoundList. It will acquire a floatParent by looking up
+        // its ancestor hierarchy (Pickers use their pickerField property as an upward link)
+        // for a floating component.
+        me.picker = new Nhl.ux.form.DateNewPicker(pickerConfig);
+        return me.picker;
+    }
+});
+
+Ext.define('Nhl.ux.form.DateNewPicker', {
+    extend: 'Ext.picker.Date',
+    requires: [
+        'Ext.container.Container'
+    ],
+    hideOnSelect: false,
+    beforeDestroy: function () {
+        var me = this;
+        if (me.rendered) {
+            Ext.destroy(
+                me.TimeContainer
+            );
+        }
+        me.callParent();
+    },
+    initEvents: function () {
+        var me = this,
+            eDate = Ext.Date,
+            day = eDate.DAY;
+        me.keyNavConfig = Ext.apply(me.keyNavConfig, {
+            down: function (e) {
+                me.update(eDate.add(me.activeDate, day, 7));
+            },
+            pageDown: function (e) {
+                me.showNextMonth();
+            },
+            tab: function () {
+                return false;
+            }
+        });
+        me.callParent();
+    },
+    beforeRender: function () {
+        var me = this;
+        me.ButtonContainer = Ext.create('Ext.container.Container', {
+            scope: me,
+            ownerCt: me,
+            ownerLayout: me.getComponentLayout(),
+            layout: 'column',
+            ariaRole: 'presentation',
+            padding: '0 0 0 9',
+            defaults: {
+                xtype: 'combo',
+                editable: false,
+                enableKeyEvents: true,
+                displayField: 'Text',
+                valueField: 'Value',
+                showClearTriggers: false,
+                width: 40
+            },
+            items: [
+                {
+                    ui: 'default-toolbar',
+                    xtype: 'button',
+                    text: '取消',
+                    width: 45,
+                    margin:'0 28 0 0',
+                    handler: me.cancelTime,
+                    scope: me, name: 'time'
+                },{
+                    ui: 'default-toolbar',
+                    xtype: 'button',
+                    text: '今天',
+                    margin:'0 27 0 0',
+                    width: 45,
+                    handler: me.selectToday,
+                    scope: me, name: 'time'
+                },{
+                    ui: 'default-toolbar',
+                    xtype: 'button',
+                    text: '确认',
+                    width: 45,
+                    handler: me.choiceTime,
+                    scope: me, name: 'time'
+                }
+            ]
+        });
+
+        me.callParent();
+    },
+    cancelTime: function() {
+        this.hide();
+    },
+    selectToday: function() {
+        var me = this,
+            handler = me.handler;
+        me.setValue(Ext.Date.clearTime(new Date()));
+        me.fireEvent('select', me, me.value);
+        if (handler) {
+            handler.call(me.scope || me, me, me.value);
+        }
+        me.onSelect();
+        return me;
+    },
+    choiceTime: function() {
+        var me = this,
+            active = me.activeDate,
+            handler = me.handler;
+        me.setValue(active);
+        me.fireEvent('select', me, me.value);
+        if (handler) {
+            handler.call(me.scope || me, me, me.value);
+        }
+        me.onSelect();
+        return me;
+    },
+    /**
+     * @cfg
+     * @inheritdoc
+     */
+    renderTpl: [
+        '<div id="{id}-innerEl" data-ref="innerEl" role="presentation">',
+        '<div class="{baseCls}-header">',
+        '<div id="{id}-prevEl" data-ref="prevEl" class="{baseCls}-prev {baseCls}-arrow" role="presentation" title="{prevText}"></div>',
+        '<div id="{id}-middleBtnEl" data-ref="middleBtnEl" class="{baseCls}-month" role="heading">{%this.renderMonthBtn(values, out)%}</div>',
+        '<div id="{id}-nextEl" data-ref="nextEl" class="{baseCls}-next {baseCls}-arrow" role="presentation" title="{nextText}"></div>',
+        '</div>',
+        '<table role="grid" id="{id}-eventEl" data-ref="eventEl" class="{baseCls}-inner" cellspacing="0" tabindex="0" aria-readonly="true">',
+        '<thead>',
+        '<tr role="row">',
+        '<tpl for="dayNames">',
+        '<th role="columnheader" class="{parent.baseCls}-column-header" aria-label="{.}">',
+        '<div role="presentation" class="{parent.baseCls}-column-header-inner">{.:this.firstInitial}</div>',
+        '</th>',
+        '</tpl>',
+        '</tr>',
+        '</thead>',
+        '<tbody>',
+        '<tr role="row">',
+        '<tpl for="days">',
+        '{#:this.isEndOfWeek}',
+        '<td role="gridcell">',
+        '<div hidefocus="on" class="{parent.baseCls}-date"></div>',
+        '</td>',
+        '</tpl>',
+        '</tr>',
+        '</tbody>',
+        '</table>',
+        '<div id="{id}-buttonContainer" data-ref="footerEl" class="{baseCls}-footer">{%this.renderButtonField(values, out)%}</div>',
+        '<tpl if="showToday">',
+        '<div id="{id}-footerEl" data-ref="footerEl" role="presentation" class="{baseCls}-footer">{%this.renderTodayBtn(values, out)%}</div>',
+        '</tpl>',
+        // These elements are used with Assistive Technologies such as screen readers
+        '<div id="{id}-todayText" class="' + Ext.baseCSSPrefix + 'hidden-clip">{todayText}.</div>',
+        '<div id="{id}-ariaMinText" class="' + Ext.baseCSSPrefix + 'hidden-clip">{ariaMinText}.</div>',
+        '<div id="{id}-ariaMaxText" class="' + Ext.baseCSSPrefix + 'hidden-clip">{ariaMaxText}.</div>',
+        '<div id="{id}-ariaDisabledDaysText" class="' + Ext.baseCSSPrefix + 'hidden-clip">{ariaDisabledDaysText}.</div>',
+        '<div id="{id}-ariaDisabledDatesText" class="' + Ext.baseCSSPrefix + 'hidden-clip">{ariaDisabledDatesText}.</div>',
+        '</div>',
+        {
+            firstInitial: function (value) {
+                return Ext.picker.Date.prototype.getDayInitial(value);
+            },
+            isEndOfWeek: function (value) {
+                // convert from 1 based index to 0 based
+                // by decrementing value once.
+                value--;
+                var end = value % 7 === 0 && value !== 0;
+                return end ? '</tr><tr role="row">' : '';
+            },
+            renderTodayBtn: function (values, out) {
+                Ext.DomHelper.generateMarkup(values.$comp.todayBtn.getRenderTree(), out);
+            },
+            renderMonthBtn: function (values, out) {
+                Ext.DomHelper.generateMarkup(values.$comp.monthBtn.getRenderTree(), out);
+            },
+            renderButtonField: function (values, out) {
+                Ext.DomHelper.generateMarkup(values.$comp.ButtonContainer.getRenderTree(), out);
+            }
+        }
+    ],
+    privates: {
+        // Do the job of a container layout at this point even though we are not a Container.
+        // TODO: Refactor as a Container.
+        finishRenderChildren: function () {
+            var me = this;
+            me.callParent();
+            me.ButtonContainer.finishRender();
+        }
+    }
+});
+
+```
+
+## 时分秒插件
+```js
+Ext.define('Nhl.ux.form.DateTimeField', {
+    extend: 'Ext.form.field.Date',
+    alias: 'widget.datetimefield',
+    requires: ['Ext.form.field.Date'],
+    format: 'Y-m-d H:i:s',
+    createPicker: function () {
+        var me = this,
+            format = Ext.String.format,
+            pickerConfig;
+
+        pickerConfig = {
+            pickerField: me,
+            floating: true,
+            preventRefocus: false,
+            hidden: true,
+            minDate: me.minValue,
+            maxDate: me.maxValue,
+            disabledDatesRE: me.disabledDatesRE,
+            disabledDatesText: me.disabledDatesText,
+            ariaDisabledDatesText: me.ariaDisabledDatesText,
+            disabledDays: me.disabledDays,
+            disabledDaysText: me.disabledDaysText,
+            ariaDisabledDaysText: me.ariaDisabledDaysText,
+            format: me.format,
+            showToday: false,//me.showToday,
+            startDay: me.startDay,
+            minText: format(me.minText, me.formatDate(me.minValue)),
+            ariaMinText: format(me.ariaMinText, me.formatDate(me.minValue, me.ariaFormat)),
+            maxText: format(me.maxText, me.formatDate(me.maxValue)),
+            ariaMaxText: format(me.ariaMaxText, me.formatDate(me.maxValue, me.ariaFormat)),
+            listeners: {
+                scope: me,
+                select: me.onSelect
+            },
+            keyNavConfig: {
+                esc: function () {
+                    me.inputEl.focus();
+                    me.collapse();
+                }
+            }
+        };
+
+        me.originalCollapse = me.collapse;
+        pickerConfig.listeners.show = {
+            fn: function () {
+                this.picker.el.on({
+                    mousedown: function () {
+                        this.collapse = Ext.emptyFn;
+                    },
+                    mouseup: function () {
+                        this.collapse = this.originalCollapse;
+                    },
+                    scope: this
+                });
+            }
+        }
+        // Create floating Picker BoundList. It will acquire a floatParent by looking up
+        // its ancestor hierarchy (Pickers use their pickerField property as an upward link)
+        // for a floating component.
+        me.picker = new Nhl.ux.form.DateTimePicker(pickerConfig);
+        return me.picker;
+    }
+});
+
+Ext.define('Nhl.ux.form.DateTimePicker', {
+    extend: 'Ext.picker.Date',
+    requires: ['Ext.form.field.Number'],
+    alias: 'widget.datetimepicker',
+    requires: [
+        'Ext.container.Container',
+        'Ext.data.Store',
+        'Ext.form.field.ComboBox'
+    ],
+    hideOnSelect: false,
+    todayText: '现在',
+    okText: '确定',
+    okTip: '确定选择时间',
+    beforeDestroy: function () {
+        var me = this;
+        if (me.rendered) {
+            Ext.destroy(
+                me.TimeContainer
+            );
+        }
+        me.callParent();
+    },
+    initEvents: function () {
+        var me = this,
+            pickerField = me.pickerField,
+            eDate = Ext.Date,
+            day = eDate.DAY;
+        me.keyNavConfig = Ext.apply(me.keyNavConfig, {
+            down: function (e) {
+                me.update(eDate.add(me.activeDate, day, 7));
+            },
+            pageDown: function (e) {
+                me.showNextMonth();
+            },
+            space: function (e) {
+                var me = this;
+                if (me.TimeContainer) {
+                    me.TimeContainer.down('combo[itemId=hours]').focus()
+                    return false;
+                }
+            },
+            tab: function () {
+                return false;
+            }
+        });
+        me.callParent();
+    },
+    beforeRender: function () {
+        var me = this,
+            today = Ext.Date.format(new Date(), me.format);
+
+        var getStore = function (endNum) {
+            return Ext.create('Ext.data.Store', {
+                fields: ['Text', 'Value'],
+                data: (function () {
+                    var d = [];
+                    for (var i = 0; i < endNum; i++) {
+                        var _text = i.toString();
+                        if (_text.length === 1) {
+                            _text = '0' + _text;
+                        }
+                        d.push({ Text: _text, Value: i });
+                    }
+                    return d;
+                })()
+            });
+        };
+        var pickerField = {};
+        if (me.pickerField) {
+            pickerField = me.pickerField;
+        }
+        me.TimeContainer = Ext.create('Ext.container.Container', {
+            scope: me,
+            ownerCt: me,
+            ownerLayout: me.getComponentLayout(),
+            layout: 'column',
+            ariaRole: 'presentation',
+            padding: '0 0 0 15',
+            defaults: {
+                xtype: 'combo',
+                editable: false,
+                enableKeyEvents: true,
+                displayField: 'Text',
+                valueField: 'Value',
+                showClearTriggers: false,
+                width: 40
+            },
+            items: [
+                {
+                    value: pickerField.lastValue == null ? new Date().getHours() : Ext.Date.format(me.pickerField.lastValue, 'H'),
+                    listeners: {
+                        keydown: function (me, e, eOpts) {
+                            if (e.getKey() == Ext.event.Event.SPACE) {
+                                me.next().next().focus();
+                                e.stopEvent();
+                            }
+                        }
+                    },
+                    store: getStore(24),
+                    itemId: 'hours', name: 'time'
+                }, { xtype: 'label', text: ':', width: 6 },
+                {
+                    value: pickerField.lastValue == null ? new Date().getMinutes() : Ext.Date.format(me.pickerField.lastValue, 'i'),
+                    store: getStore(60),
+                    listeners: {
+                        keydown: function (me, e, eOpts) {
+                            if (e.getKey() == Ext.event.Event.SPACE) {
+                                me.next().next().focus();
+                                e.stopEvent();
+                            }
+                        }
+                    },
+                    itemId: 'minutes', name: 'time'
+                }, { xtype: 'label', text: ':', width: 6 },
+                {
+                    value: pickerField.lastValue == null ? new Date().getSeconds() : Ext.Date.format(me.pickerField.lastValue, 's'),
+                    store: getStore(60),
+                    listeners: {
+                        keydown: function (me, e, eOpts) {
+                            if (e.getKey() == Ext.event.Event.SPACE) {
+                                me.next().focus();
+                                e.stopEvent();
+                            }
+                        }
+                    },
+                    itemId: 'seconds', name: 'time'
+                }, {
+                    ui: 'default-toolbar',
+                    xtype: 'button',
+                    text: '确认',
+                    width: 45,
+                    handler: me.selectTime,
+                    scope: me, name: 'time'
+                }
+            ]
+        });
+        me.callParent();
+    },
+    setValue: function (value) {
+        if (!Ext.isDate(value)) {
+            value = Ext.Date.parse(value || new Date(), this.format);
+        }
+        this.value = value;
+        return this.update(this.value);
+    },
+    getTimeSp: function () {
+        var me = this;
+        if (me.TimeContainer) {
+            var h = parseInt(me.TimeContainer.down('combo[itemId=hours]').getValue(), 10) * 60 * 60;
+            var m = parseInt(me.TimeContainer.down('combo[itemId=minutes]').getValue(), 10) * 60;
+            var s = parseInt(me.TimeContainer.down('combo[itemId=seconds]').getValue(), 10);
+            return h + m + s;
+        }
+        return 0;
+    },
+
+    handleTabKey: function (e) {
+        var me = this,
+            t = me.getSelectedDate(me.activeDate),
+            handler = me.handler;
+
+        // The following code is like handleDateClick without the e.stopEvent()
+        if (!me.disabled && t.dateValue && !Ext.fly(t.parentNode).hasCls(me.disabledCellCls)) {
+            me.setValue(Ext.Date.add(new Date(t.dateValue), Ext.Date.SECOND, me.getTimeSp()));
+            me.fireEvent('select', me, me.value);
+            if (handler) {
+                Ext.callback(handler, me.scope, [me, me.value], null, me, me);
+            }
+
+            // If the ownerfield is part of an editor we must preventDefault and let
+            // the navigationModel handle the tab event.
+            if (me.pickerField && me.pickerField.isEditorComponent) {
+                e.preventDefault();
+            }
+            me.onSelect();
+        }
+        // Even if the above condition is not met we have to let the field know
+        // that we're tabbing out - that's user action we can do nothing about
+        else {
+            me.fireEventArgs('tabout', [me]);
+        }
+    },
+    /**
+     * Respond to a date being clicked in the picker
+     * @private
+     * @param {Ext.event.Event} e
+     * @param {HTMLElement} t
+     */
+    handleDateClick: function (e, t) {
+        var me = this,
+            handler = me.handler;
+
+        e.stopEvent();
+
+        if (!me.disabled && t.dateValue && !Ext.fly(t.parentNode).hasCls(me.disabledCellCls)) {
+            me.setValue(Ext.Date.add(new Date(t.dateValue), Ext.Date.SECOND, me.getTimeSp()));
+            //me.fireEvent('select', me, me.value);
+
+            if (handler) {
+                Ext.callback(handler, me.scope, [me, me.value], null, me, me);
+            }
+
+            // event handling is turned off on hide
+            // when we are using the picker in a field
+            // therefore onSelect comes AFTER the select
+            // event.
+            me.onSelect();
+        }
+    },
+    /**
+     * Update the selected cell
+     * @private
+     * @param {Date} date The new date
+     */
+    selectedUpdate: function (date) {
+        var me = this,
+            t = date.getTime();
+
+        me.callParent([Ext.Date.clearTime(new Date(t))]);
+
+        if (me.TimeContainer) {
+            me.TimeContainer.down('combo[itemId=hours]').setValue(date.getHours());
+            me.TimeContainer.down('combo[itemId=minutes]').setValue(date.getMinutes());
+            me.TimeContainer.down('combo[itemId=seconds]').setValue(date.getSeconds());
+        }
+    },
+    /**
+     * Sets the current value to today.
+     * @return {Ext.picker.Date} this
+     */
+    selectToday: function () {
+        var me = this,
+            btn = me.todayBtn,
+            handler = me.handler;
+
+        if (btn && !btn.disabled) {
+            me.setValue(new Date());
+            me.fireEvent('select', me, me.value);
+            if (handler) {
+                Ext.callback(handler, me.scope, [me, me.value], null, me, me);
+            }
+            me.onSelect();
+        }
+        return me;
+    },
+    selectTime: function (button, e) {
+        if (e.getKey() == Ext.event.Event.SPACE) {
+            this.focus();
+            return;
+        }
+        var me = this,
+            handler = me.handler,
+            t = me.activeDate,
+            _v = Ext.Date.add(Ext.Date.clearTime(new Date(t)), Ext.Date.SECOND, me.getTimeSp());
+
+        me.setValue(_v);
+        me.fireEvent('select', me, me.value);
+        if (handler) {
+            Ext.callback(handler, me.scope, [me, me.value], null, me, me);
+        }
+        me.onSelect();
+
+        return me;
+    },
+    /**
+     * @cfg
+     * @inheritdoc
+     */
+    renderTpl: [
+        '<div id="{id}-innerEl" data-ref="innerEl" role="presentation">',
+        '<div class="{baseCls}-header">',
+        '<div id="{id}-prevEl" data-ref="prevEl" class="{baseCls}-prev {baseCls}-arrow" role="presentation" title="{prevText}"></div>',
+        '<div id="{id}-middleBtnEl" data-ref="middleBtnEl" class="{baseCls}-month" role="heading">{%this.renderMonthBtn(values, out)%}</div>',
+        '<div id="{id}-nextEl" data-ref="nextEl" class="{baseCls}-next {baseCls}-arrow" role="presentation" title="{nextText}"></div>',
+        '</div>',
+        '<table role="grid" id="{id}-eventEl" data-ref="eventEl" class="{baseCls}-inner" cellspacing="0" tabindex="0" aria-readonly="true">',
+        '<thead>',
+        '<tr role="row">',
+        '<tpl for="dayNames">',
+        '<th role="columnheader" class="{parent.baseCls}-column-header" aria-label="{.}">',
+        '<div role="presentation" class="{parent.baseCls}-column-header-inner">{.:this.firstInitial}</div>',
+        '</th>',
+        '</tpl>',
+        '</tr>',
+        '</thead>',
+        '<tbody>',
+        '<tr role="row">',
+        '<tpl for="days">',
+        '{#:this.isEndOfWeek}',
+        '<td role="gridcell">',
+        '<div hidefocus="on" class="{parent.baseCls}-date"></div>',
+        '</td>',
+        '</tpl>',
+        '</tr>',
+        '</tbody>',
+        '</table>',
+        '<div id="{id}-timeContainer" data-ref="footerEl" class="{baseCls}-footer">{%this.renderTimeField(values, out)%}</div>',
+        '<tpl if="showToday">',
+        '<div id="{id}-footerEl" data-ref="footerEl" role="presentation" class="{baseCls}-footer">{%this.renderTodayBtn(values, out)%}</div>',
+        '</tpl>',
+        // These elements are used with Assistive Technologies such as screen readers
+        '<div id="{id}-todayText" class="' + Ext.baseCSSPrefix + 'hidden-clip">{todayText}.</div>',
+        '<div id="{id}-ariaMinText" class="' + Ext.baseCSSPrefix + 'hidden-clip">{ariaMinText}.</div>',
+        '<div id="{id}-ariaMaxText" class="' + Ext.baseCSSPrefix + 'hidden-clip">{ariaMaxText}.</div>',
+        '<div id="{id}-ariaDisabledDaysText" class="' + Ext.baseCSSPrefix + 'hidden-clip">{ariaDisabledDaysText}.</div>',
+        '<div id="{id}-ariaDisabledDatesText" class="' + Ext.baseCSSPrefix + 'hidden-clip">{ariaDisabledDatesText}.</div>',
+        '</div>',
+        {
+            firstInitial: function (value) {
+                return Ext.picker.Date.prototype.getDayInitial(value);
+            },
+            isEndOfWeek: function (value) {
+                // convert from 1 based index to 0 based
+                // by decrementing value once.
+                value--;
+                var end = value % 7 === 0 && value !== 0;
+                return end ? '</tr><tr role="row">' : '';
+            },
+            renderTodayBtn: function (values, out) {
+                Ext.DomHelper.generateMarkup(values.$comp.todayBtn.getRenderTree(), out);
+            },
+            renderMonthBtn: function (values, out) {
+                Ext.DomHelper.generateMarkup(values.$comp.monthBtn.getRenderTree(), out);
+            },
+            renderTimeField: function (values, out) {
+                Ext.DomHelper.generateMarkup(values.$comp.TimeContainer.getRenderTree(), out);
+            }
+        }
+    ],
+    privates: {
+        // Do the job of a container layout at this point even though we are not a Container.
+        // TODO: Refactor as a Container.
+        finishRenderChildren: function () {
+            var me = this;
+            me.callParent();
+            me.TimeContainer.finishRender();
+        }
+    }
+});
+
+```
+
+## 增加月份插件
+
+```js
+Ext.define('Nhl.ux.MonthPicker', {
+    extend: 'Ext.form.field.Picker',
+    alias: 'widget.monthfield',
+    requires: ['Ext.picker.Month'],
+    matchFieldWidth: false,
+    triggerCls: Ext.baseCSSPrefix + 'form-date-trigger',
+    format:'Y年m月',//显示格式
+    valueFormat:'Y-m',//值格式
+    editable:false,
+    initComponent : function(){
+        var me = this;
+        me.callParent();
+    },
+    createPicker:function(){
+        var me=this,picker = me.picker;
+        var monthDefaultConfig={
+            ownerCmp: me,
+            hidden: true,
+            floating: true,
+            listeners: {
+                scope: me,
+                cancelclick: me.onCancelClick,
+                okclick: me.onOkClick,
+                yeardblclick: me.onOkClick,
+                monthdblclick: me.onOkClick,
+                el:{
+                    mousedown:function(e){
+                        e.preventDefault();
+                    }
+                }
+            }
+        };
+        if (!picker) {
+            picker =new Ext.picker.Month(monthDefaultConfig)
+        }
+        return picker;
+    },
+    rawToValue: function(rawValue) {
+        value = Ext.Date.parse(rawValue,this.format);
+        value=Ext.Date.format(value,this.valueFormat);
+        return value;
+    },
+    valueToRaw: function(value) {
+        rawValue = Ext.Date.parse(value,this.valueFormat);
+        rawValue=Ext.Date.format(rawValue,this.format);
+        return rawValue;
+    },
+    onCancelClick: function () {
+        var me = this;
+        me.setValue(null);
+        this.collapse();
+    },
+    onOkClick: function (picker, value) {
+        var me = this,
+            month = value[0],
+            year = value[1],
+            date = new Date(year, month, 1);
+        date=this.formatDate(date);
+        if(me.fireEvent('beforeselect',me,date)===false){
+            return;
+        }
+        me.setValue(date);
+        this.collapse();
+        me.fireEvent('select',me,me.getValue());
+    },
+    onExpand: function() {
+        var value = Ext.Date.parse(this.getValue(),this.valueFormat);
+        this.picker.setValue(Ext.isDate(value) ? value : new Date());
+    },
+    formatDate: function(date){
+        return Ext.isDate(date) ? Ext.Date.dateFormat(date, this.valueFormat) : date;
+    }
+});
+
+```
+
+## 编辑器
+```js
+Ext.define("Nhl.ux.form.UEditor", {
+    extend: 'Ext.form.field.Base',
+    alias:'widget.ueditor',
+    ueditor:null,
+    ueditorConfig: {},
+    anchor: '100%',
+    config:{
+    },
+    initComponent:function(){
+        var me = this;
+        Ext.apply(this,{
+            //fieldSubTpl:'<div id="'+me.id+'ueditor" name="'+me.name+'" ></div>',
+            fieldSubTpl: '<script id="'+me.id+'ueditor" type="text/plain" name="' + me.name + '"></script>',
+            items:[
+                {
+                    xtype: 'hiddenfield',
+                    name: me.name
+                }
+            ],
+            listeners:{
+                scope:me,
+                render:function(){
+                    var config = {initialFrameWidth: (me.width || '100%'),initialFrameHeight:(me.height || '100%'),autoHeightEnabled:false,autoFloatEnabled:false};
+                    Object.assign(me.ueditorConfig,config);
+                    me.ueditor = UE.getEditor(me.id+'ueditor',config);
+                    me.ueditor.ready(function(){
+                        me.ueditor.addListener('contentChange',function(){
+                            me.fireEvent('change', me);
+                            me.setValue(me.ueditor.getContent(),true);
+                        });
+                    });
+                }
+            }
+        });
+        this.callParent();
+    },
+    onDestroy:function () {
+        if(this.ueditor){
+            this.ueditor.destroy();
+        }
+    },
+    getValue:function(){
+        var me = this,
+            value;
+        if(me.ueditor){
+            me.ueditor.ready(function(){
+                me.value = me.ueditor.getContent();
+            });
+        }
+        value = me.value;
+        return value;
+    },
+    setValue:function(value,isChange){
+        var me = this;
+        if(value === null || value === undefined){
+            value = "";
+        }
+        me.callParent(arguments);
+        if(!isChange){
+            if(me.ueditor){
+                me.ueditor.ready(function(){
+                    me.ueditor.setContent(value);
+                });
+            }
+        }
+        return me;
+    }
+});
+
+```
+
+## 按钮
+```js
+Ext.define("Nhl.ux.button.PermissionButton", {
+    extend: "Ext.button.Button",
+    alias: "widget.permissionbutton",
+    permission:"",
+    hidden:false,
+    initComponent:function () {
+        var p = this.permission;
+        for (var key in permission){
+            if(p==key){
+                this.setHidden(!permission[key])
+            }
+        }
+    }
+});
+
+Ext.define("Nhl.ux.button.ImageButton", {
+    extend: "Ext.button.Button",
+    alias: "widget.imagebutton",
+    cls: "",
+    iconAlign: "left",
+    initRenderTpl: Ext.emptyFn,
+    componentLayout: null,
+    autoEl: 'img',
+    frame: false,
+    initComponent: function () {
+        this.scale = null;
+        this.callParent();
+        this.autoEl = {
+            tag: 'img',
+            role: 'button',
+            hidefocus: 'on',
+            unselectable: 'on'
+        };
+        var i;
+        if (this.imageUrl) {
+            i = new Image().src = this.imageUrl;
+        }
+        if (this.overImageUrl) {
+            i = new Image().src = this.overImageUrl;
+        }
+        if (this.disabledImageUrl) {
+            i = new Image().src = this.disabledImageUrl;
+        }
+        if (this.pressedImageUrl) {
+            i = new Image().src = this.pressedImageUrl;
+        }
+    },
+    getElConfig: function () {
+        return Ext.apply(this.callParent(), {
+            tag: "img",
+            id: this.getId(),
+            src: this.imageUrl,
+            style: this.getStyle()
+        });
+    },
+    getStyle: function () {
+        var style = "border:none;cursor:pointer;";
+        if (this.style) {
+            style += this.style;
+        }
+        if (this.height) {
+            style += "height:" + this.height + "px;";
+        }
+        if (this.width) {
+            style += "width:" + this.width + "px;";
+        }
+        return style;
+    },
+    onRender: function (ct, position) {
+        this.imgEl = this.el;
+        if (!Ext.isEmpty(this.imgEl.getAttribute("width"), false) || !Ext.isEmpty(this.imgEl.getAttribute("height"), false)) {
+            this.imgEl.dom.removeAttribute("width");
+            this.imgEl.dom.removeAttribute("height");
+        }
+        if (this.altText) {
+            this.imgEl.dom.setAttribute("alt", this.altText);
+        }
+        if (this.align && this.align !== "notset") {
+            this.imgEl.dom.setAttribute("align", this.align);
+        }
+        if (this.pressed && this.pressedImageUrl) {
+            this.imgEl.dom.src = this.pressedImageUrl;
+        }
+        if (this.disabled) {
+            this.setDisabled(true);
+        }
+        if (this.tabIndex !== undefined) {
+            this.imgEl.dom.tabIndex = this.tabIndex;
+        }
+        if (this.href) {
+            this.on("click",
+                function () {
+                    if (this.target) {
+                        window.open(this.href, this.target);
+                    } else {
+                        window.location = this.href;
+                    }
+                },
+                this);
+        }
+        this.callParent(arguments);
+        this.btnEl = this.el;
+    },
+    onMenuShow: function (e) {
+        this.ignoreNextClick = 0;
+        if (this.pressedImageUrl) {
+            this.imgEl.dom.src = this.pressedImageUrl;
+        }
+        this.fireEvent("menushow", this, this.menu);
+    },
+    onMenuHide: function (e) {
+        this.ignoreNextClick = Ext.defer(this.restoreClick, 250, this);
+        this.imgEl.dom.src = (this.monitoringMouseOver) ? this.overImageUrl : this.imageUrl;
+        this.fireEvent("menuhide", this, this.menu);
+        this.focus();
+    },
+    getTriggerSize: function () {
+        return 0;
+    },
+    toggle: function (state, suppressEvent, suppressHandler) {
+        state = state === undefined ? !this.pressed : !!state;
+        if (state != this.pressed) {
+            if (state) {
+                if (this.pressedImageUrl) {
+                    this.imgEl.dom.src = this.pressedImageUrl;
+                }
+                this.pressed = true;
+            } else {
+                this.imgEl.dom.src = (this.monitoringMouseOver) ? this.overImageUrl : this.imageUrl;
+                this.pressed = false;
+            }
+            if (!suppressEvent) {
+                this.fireEvent("toggle", this, this.pressed);
+            }
+            if (this.toggleHandler && !suppressHandler) {
+                this.toggleHandler.call(this.scope || this, this, state);
+            }
+        }
+        return this;
+    },
+    setText: Ext.emptyFn,
+    setDisabled: function (disabled) {
+        this.disabled = disabled;
+        if (this.imgEl && this.imgEl.dom) {
+            this.imgEl.dom.disabled = disabled;
+        }
+        if (disabled) {
+            if (this.disabledImageUrl) {
+                this.imgEl.dom.src = this.disabledImageUrl;
+            } else {
+                this.imgEl.addCls(this.disabledCls);
+            }
+            this.imgEl.setStyle({
+                cursor: "default"
+            });
+        } else {
+            this.imgEl.dom.src = this.imageUrl;
+            this.imgEl.setStyle({
+                cursor: "pointer"
+            });
+            this.imgEl.removeCls(this.disabledCls);
+        }
+    },
+    onMouseOver: function (e) {
+        if (!this.disabled) {
+            var internal = e.within(this.el.dom, true);
+            if (!internal) {
+                if (this.overImageUrl && !this.pressed && !this.hasVisibleMenu()) {
+                    this.imgEl.dom.src = this.overImageUrl;
+                }
+                if (!this.monitoringMouseOver) {
+                    Ext.getDoc().on("mouseover", this.monitorMouseOver, this);
+                    this.monitoringMouseOver = true;
+                }
+            }
+        }
+        this.fireEvent("mouseover", this, e);
+    },
+    monitorMouseOver: function (e) {
+        if (e.target != this.el.dom && !e.within(this.el)) {
+            if (this.monitoringMouseOver) {
+                Ext.getDoc().un('mouseover', this.monitorMouseOver, this);
+                this.monitoringMouseOver = false;
+            }
+            this.onMouseOut(e);
+        }
+    },
+    onMouseEnter: function (e) {
+        if (this.overImageUrl && !this.pressed && !this.disabled && !this.hasVisibleMenu()) {
+            this.imgEl.dom.src = this.overImageUrl;
+        }
+        this.fireEvent("mouseover", this, e);
+    },
+    onMouseOut: function (e) {
+        if (!this.disabled && !this.pressed && !this.hasVisibleMenu()) {
+            this.imgEl.dom.src = this.imageUrl;
+        }
+        this.fireEvent("mouseout", this, e);
+    },
+    onMouseDown: function (e) {
+        var me = this;
+        if (Ext.isIE) {
+            me.getFocusEl().focus();
+        }
+        if (!me.disabled && e.button === 0) {
+            if (me.pressedImageUrl) {
+                me.imgEl.dom.src = me.pressedImageUrl;
+            }
+            Ext.button.Manager.onButtonMousedown(me, e);
+        }
+    },
+    onMouseUp: function (e) {
+        if (!this.isDestroyed && e.button === 0 && !this.enableToggle && !this.hasVisibleMenu()) {
+            this.imgEl.dom.src = (this.overImageUrl && this.monitoringMouseOver) ? this.overImageUrl : this.imageUrl;
+        }
+    },
+    setImageUrl: function (image) {
+        this.imageUrl = image;
+        if ((!this.disabled || Ext.isEmpty(this.disabledImageUrl, false)) && (!this.pressed || Ext.isEmpty(this.pressedImageUrl, false))) {
+            this.imgEl.dom.src = image;
+        } else {
+            new Image().src = image;
+        }
+    },
+    setDisabledImageUrl: function (image) {
+        this.disabledImageUrl = image;
+        if (this.disabled) {
+            this.imgEl.dom.src = image;
+        } else {
+            new Image().src = image;
+        }
+    },
+    setOverImageUrl: function (image) {
+        this.overImageUrl = image;
+        if ((!this.disabled || Ext.isEmpty(this.disabledImageUrl, false)) && (!this.pressed || Ext.isEmpty(this.pressedImageUrl, false))) {
+            this.imgEl.dom.src = image;
+        } else {
+            new Image().src = image;
+        }
+    },
+    setPressedImageUrl: function (image) {
+        this.pressedImageUrl = image;
+        if ((!this.disabled || Ext.isEmpty(this.disabledImageUrl, false)) && this.pressed) {
+            this.imgEl.dom.src = image;
+        } else {
+            new Image().src = image;
+        }
+    },
+    setAlign: function (align) {
+        this.align = align;
+        if (this.rendered) {
+            this.imgEl.dom.setAttribute("align", this.align);
+        }
+    },
+    setAltText: function (altText) {
+        this.altText = altText;
+        if (this.rendered) {
+            this.imgEl.dom.setAttribute("altText", this.altText);
+        }
+    }
+});
+
+```
+
+## Store基类
+```js
+Ext.define("Nhl.base.Store", {
+    extend: 'Ext.data.Store',
+    outParams: {},
+    pageSize: 10,
+    autoLoad: false,
+    //autoDestroy: true,
+    isRequiresPage: true,
+    latestTotalCount: 0,
+    proxy: {
+        type: 'ajax',
+        actionMethods: {
+            create: 'POST',
+            read: 'POST',
+            update: 'POST',
+            destroy: 'POST'
+        },
+        reader: {
+            type: 'json',
+            rootProperty: 'data',
+            successProperty: 'IsSuccess',
+            messageProperty: 'ErrMsg',
+            totalProperty: "TotalCount"
+        },
+        limitParam: "limit",
+        pageParam: "page",
+        startParam: 'start',
+        timeout: 60000//响应时间
+    },
+    listeners: {
+        beforeload: function (store, opration, opt) {
+            var me = this;
+
+            me.lastTotalCount = store.totalCount;
+            // if (me.isRequiresPage) {
+            //     me.outParams.TotalCount = 0;
+            // } else {
+            //     try {
+            //         me.outParams.TotalCount = store.totalCount || 0;
+            //     } catch (e) { }
+            // }
+            Ext.apply(store.proxy.extraParams, me.outParams);
+
+            setTimeout(function () {
+                var proxy = store.getProxy();
+                if (proxy) {
+                    var getCountUrl = proxy.api.read;
+                    if (getCountUrl) {
+                        if (me.isRequiresPage) {
+                            // store.fireEvent('beforeUpdatePageInfo');
+                            Ext.Ajax.request({
+                                url: getCountUrl,
+                                method: 'POST',
+                                callback: function (options, success, response) {
+                                    console.log(success)
+                                    if (success) {
+                                        var responseJson = Ext.JSON.decode(response.responseText);
+                                        store.totalCount = responseJson.Result;
+                                        store.latestTotalCount = responseJson.Result;
+                                        //beforeload load 事件执行完之后都执行这个方法
+                                        me.updateTotalCount();
+                                        store.fireEvent('updatePageInfo');
+                                    }
+                                },
+                                params: store.proxy.extraParams
+                            });
+                        } else {
+                            store.totalCount = me.lastTotalCount;
+                        }
+                    }
+                }
+            }, 1000);
+            //store.removeAll();
+        },
+        load: function (store) {
+            var me = this;
+            //beforeload load 事件执行完之后都执行这个方法
+            var getCountUrl = store.getProxy().api.read;
+            if (getCountUrl) {
+                me.updateTotalCount();
+            }
+
+        }
+    },
+    /*silent : Boolean (optional)
+     Pass true to prevent the clear event from being fired.
+     This method is affected by filtering.
+     Defaults to: false
+     */
+    clearAll: function (silent) {
+        this.outParams = {};
+        this.proxy.extraParams = {};
+        this.removeAll(silent || false);
+    },
+
+    //beforeload load 事件执行完之后都执行这个方法，更新总数
+    updateTotalCount: function () {
+        var me = this;
+
+        me.totalCount = me.latestTotalCount;
+
+    }
+});
+
+```
+
+## 分页条 带页码大小下拉框
+```js
+Ext.define('Nhl.ux.CisPagingToolBar', {
+    extend: 'Ext.toolbar.Paging',
+    xtype: 'cispagingtoolbar',
+    alternateClassName: 'Nhl.ux.CisPagingToolBar',
+    cls: 'cis-pagingtoolbar-panel',
+    padding: 0,
+    displayInfo: true,
+    displayMsg: '显示{0}-{1}&nbsp;共{2}条',
+    emptyMsg: '没有数据',
+    beforePageText: '第',
+    afterPageText: '页&nbsp;共{0}页',
+    firstText: '首页',
+    prevText: '上一页',
+    nextText: '下一页',
+    lastText: '最后一页',
+    refreshText: '刷新',
+    /**
+     * 每页大小列表
+     */
+    pageSizes: '5,10,50,100',
+    getPagingItems: function () {
+        var me = this,
+            inputListeners = {
+                scope: me,
+                blur: me.onPagingBlur
+            };
+
+        //inputListeners[''] = me.onPagingKeyDown;
+        inputListeners[Ext.supports.SpecialKeyDownRepeat ? 'keydown' : 'keypress'] = me.onPagingKeyDown;
+
+        var _temp = me.pageSizes.split(',');
+        var _data = [];
+        for (var i = 0; i < _temp.length; i++) {
+            if (_temp[i]) {
+                _data[_data.length] = { text: _temp[i].toString(), value: _temp[i] };
+            }
+        }
+        var pagess = Ext.create('Ext.data.Store', {
+            fields: ['text', 'value'],
+            data: _data
+        });
+
+        return [
+            "每页",
+            {
+                itemId: 'pageSizes',
+                xtype: "combo",
+                store: pagess,
+                queryMode: 'local',
+                displayField: 'text',
+                valueField: 'value',
+                width: 65,
+                editable: false,
+                showClearTriggers: false,
+                // value: window.localStorage.pagesize||me.store.getPageSize(),
+                listeners: {
+                    change: function (obj, newValue,oldValue) {
+                        if(oldValue==null){
+                            if(window.localStorage.pageSize){
+                                me.store.setPageSize(window.localStorage.pageSize);
+                            }else{
+                                me.store.setPageSize(newValue);
+                            }
+                        }else {
+                            window.localStorage.pageSize = newValue;
+                            me.store.setPageSize(newValue);
+                        }
+                        if (!me._notFireChange) {
+                            me.moveFirst();
+                        }
+                    }
+                }
+            },
+            "条",
+            '-', {
+                itemId: 'first',
+                tooltip: me.firstText,
+                overflowText: me.firstText,
+                iconCls: Ext.baseCSSPrefix + 'tbar-page-first',
+                disabled: true,
+                handler: me.moveFirst,
+                scope: me
+            }, {
+                itemId: 'prev',
+                tooltip: me.prevText,
+                overflowText: me.prevText,
+                iconCls: Ext.baseCSSPrefix + 'tbar-page-prev',
+                disabled: true,
+                handler: me.movePrevious,
+                scope: me
+            },
+            '-',
+            me.beforePageText,
+            {
+                xtype: 'numberfield',
+                itemId: 'inputItem',
+                name: 'inputItem',
+                cls: Ext.baseCSSPrefix + 'tbar-page-number',
+                allowDecimals: false,
+                minValue: 1,
+                hideTrigger: true,
+                enableKeyEvents: true,
+                keyNavEnabled: false,
+                selectOnFocus: true,
+                submitValue: false,
+                // mark it as not a field so the form will not catch it when getting fields
+                isFormField: false,
+                width: me.inputItemWidth,
+                margin: '-1 2 3 2',
+                listeners: inputListeners
+            },
+            {
+                xtype: 'tbtext',
+                itemId: 'afterTextItem',
+                text: Ext.String.format(me.afterPageText, 1)
+            },
+            '-',
+            {
+                itemId: 'next',
+                tooltip: me.nextText,
+                overflowText: me.nextText,
+                iconCls: Ext.baseCSSPrefix + 'tbar-page-next',
+                disabled: true,
+                handler: me.moveNext,
+                scope: me
+            }, {
+                itemId: 'last',
+                tooltip: me.lastText,
+                overflowText: me.lastText,
+                iconCls: Ext.baseCSSPrefix + 'tbar-page-last',
+                disabled: true,
+                handler: me.moveLast,
+                scope: me
+            },
+            '-',
+            {
+                itemId: 'refresh',
+                tooltip: me.refreshText,
+                overflowText: me.refreshText,
+                iconCls: Ext.baseCSSPrefix + 'tbar-loading',
+                disabled: me.store.isLoading(),
+                handler: me.doRefresh,
+                scope: me
+            }];
+    },
+
+    initComponent: function () {
+        var me = this;
+
+        //设置返回时第几页的状态
+        me.store.currentPage = window.localStorage.currentPage||me.store.currentPage;
+        me.store.on({
+            'beforeUpdatePageInfo': {
+                fn: me.beforeUpdatePageInfo,
+                scope: me
+            },
+            'updatePageInfo': {
+                fn: me.updatePageInfo,
+                scope: me
+            }
+        });
+        me.callParent();
+    },
+    beforeUpdatePageInfo: function () {
+        var me = this;
+        me.mask('正在更新分页信息...');
+    },
+    updatePageInfo: function () {
+        var me = this;
+        me.unmask();
+        me.updateBarInfo();
+    },
+
+    // @private
+    onLoad: function () {
+        var me = this,
+            pageData,
+            currPage,
+            pageCount,
+            afterText,
+            count,
+            isEmpty,
+            item,
+            pageSizes;
+
+        count = me.store.getCount();
+        isEmpty = count === 0;
+        if (!isEmpty) {
+            pageData = me.getPageData();
+            currPage = pageData.currentPage;
+            pageCount = pageData.pageCount;
+
+            // Check for invalid current page.
+            if (currPage > pageCount) {
+                //me.store.loadPage(pageCount);
+                return;
+            }
+
+            afterText = Ext.String.format(me.afterPageText, isNaN(pageCount) ? 1 : pageCount);
+        } else {
+            currPage = 0;
+            pageCount = 0;
+            afterText = Ext.String.format(me.afterPageText, 0);
+        }
+
+        Ext.suspendLayouts();
+        item = me.child('#afterTextItem');
+        if (item) {
+            item.setText(afterText);
+        }
+        item = me.getInputItem();
+        if (item) {
+            item.setDisabled(isEmpty).setValue(currPage);
+        }
+        item = me.child('#pageSizes');
+        if (item) {
+            me._notFireChange = true;
+            item.setValue(me.store.getPageSize());
+            me._notFireChange = false;
+        }
+
+        me.setChildDisabled('#first', currPage === 1 || isEmpty);
+        me.setChildDisabled('#prev', currPage === 1 || isEmpty);
+        me.setChildDisabled('#next', currPage === pageCount || isEmpty);
+        me.setChildDisabled('#last', currPage === pageCount || isEmpty);
+        me.setChildDisabled('#refresh', false);
+        me.setChildDisabled('#go', isEmpty);
+        me.updateInfo();
+        Ext.resumeLayouts(true);
+
+        if (!me.calledInternal) {
+            me.fireEvent('change', me, pageData || me.emptyPageData);
+        }
+    },
+
+    // @private
+    moveNext: function() {
+        var me = this,
+            store = me.store,
+            total = me.getPageData().pageCount,
+            next = Number(store.currentPage)+ 1;
+        if (next <= total) {
+            if (me.fireEvent('beforechange', me, next) !== false) {
+                this.store.loadPage(next);
+                return true;
+            }
+        }
+        return false;
+    },
+    // @private
+    getPageData: function() {
+        var store = this.store,
+            totalCount = store.getTotalCount();
+        return {
+            total: totalCount,
+            currentPage: store.currentPage,
+            pageCount: Math.ceil(totalCount / store.pageSize),
+            fromRecord: ((store.currentPage - 1) * store.pageSize) + 1,
+            toRecord: Math.min(store.currentPage * store.pageSize, totalCount)
+        };
+    },
+    // @private
+    onPagingBlur: function (e) {
+        var me = this,
+            inputItem = this.getInputItem(),
+            pageData = me.getPageData(),
+            pageNum;
+        if (inputItem) {
+            pageNum = me.readPageFromInput(pageData);
+            if (pageNum !== false) {
+                pageNum = Math.min(Math.max(1, pageNum), pageData.pageCount);
+                if (pageNum !== pageData.currentPage && me.fireEvent('beforechange', me, pageNum) !== false) {
+                    me.store.loadPage(pageNum);
+                }
+            }
+            //curPage = this.getPageData().currentPage;
+            //inputItem.setValue(curPage);
+        }
+    }
+});
+
+```
+
+## 表格基类
+```js
+Ext.define("Nhl.base.Grid", {
+    extend: 'Ext.grid.Panel',
+    alias: 'widget.cisgrid',
+    requires: [
+        'Nhl.ux.CisPagingToolBar'
+    ],
+    isPage: true,
+    pageSizes: null,
+    loadMask: false,
+    multiColumnSort: true,
+    viewConfig:{
+        enableTextSelection:true
+    },
+    initComponent: function () {
+        var me = this,
+            vm,
+            bindStoreName,
+            store;
+
+        //增加页码条默认功能
+        if (me.isPage) {
+            try {
+                try {
+                    store = me.store || me.getBind().store.getValue();
+                } catch (e) { }
+
+                if (!store || store.isEmptyStore) {
+                    if (me.config.bind && me.config.bind.store) {
+                        bindStoreName = Ext.String.trim(me.config.bind.store).replace('{', '').replace('}', '');
+                        vm = me.getViewModel();
+                        store = vm.getStore(bindStoreName);
+                    }
+                }
+                if (me.buttons && me.buttons.length > 0) {
+                    Ext.apply(this, {
+                        dockedItems: {
+                            xtype: 'panel',
+                            dock: 'bottom',
+                            layout: {
+                                type: 'table',
+                                columns: 2,
+                                tableAttrs: {
+                                    style: {
+                                        width: '100%',
+                                        background:'#ececec'
+                                    }
+                                }
+                            },
+                            items: [{
+                                xtype: 'panel',
+                                colspan: 1,
+                                items: [
+                                    new Nhl.ux.CisPagingToolBar({
+                                        displayInfo: true,
+                                        displayMsg: '显示{0}-{1}&nbsp;共{2}条',
+                                        store: store,
+                                        pageSizes: me.pageSizes || '5,10,50,100'
+                                    })
+                                ]
+                            },{
+                                xtype: 'panel',
+                                colspan: 1,
+                                buttons: me.buttons
+                            }
+
+                            ]
+                        }
+                    });
+                    me.buttons = undefined;
+                } else {
+                    Ext.apply(this, {
+                        bbar: new Nhl.ux.CisPagingToolBar({
+                            displayInfo: true,
+                            displayMsg: '显示{0}-{1}&nbsp;共{2}条',
+                            store: store,
+                            pageSizes: me.pageSizes || '5,10,50,100'
+                        })
+                    });
+                }
+            } catch (e) {
+                Ext.log.error(e.stack);
+            }
+        }
+        me.viewConfig = Ext.apply({
+            loadMask: me.loadMask,
+            //增加行样式设置功能
+            getRowClass: function (record, rowIndex, rowParams, store) {
+                var css = '';
+                if (record.data._isDisabled) {
+                    css = 'x-grid-disabled ';
+                }
+                if (record._rowclass || record.data._rowclass) {
+                    css += (record._rowclass || record.data._rowclass);
+                }
+                if (css) {
+                    return css;
+                }
+            }
+        }, me.viewConfig);
+
+        me.callParent(arguments);
+    }
+});
+Ext.define('Nhl.ux.CisPagingToolBarIn', {
+    extend: 'Ext.toolbar.Paging',
+    xtype: 'cispagingtoolbarin',
+    alternateClassName: 'Fm.ux.CisPagingToolBarIn',
+    cls: 'cis-pagingtoolbar-panel',
+    padding: 0,
+    displayInfo: true,
+    displayMsg: '显示{0}-{1}&nbsp;共{2}条',
+    emptyMsg: '没有数据',
+    beforePageText: '第',
+    afterPageText: '页&nbsp;共{0}页',
+    firstText: '首页',
+    prevText: '上一页',
+    nextText: '下一页',
+    lastText: '最后一页',
+    refreshText: '刷新',
+    /**
+     * 每页大小列表
+     */
+    pageSizes: '5,10,50,100',
+    getPagingItems: function () {
+        var me = this,
+            inputListeners = {
+                scope: me,
+                blur: me.onPagingBlur
+            };
+
+        //inputListeners[''] = me.onPagingKeyDown;
+        inputListeners[Ext.supports.SpecialKeyDownRepeat ? 'keydown' : 'keypress'] = me.onPagingKeyDown;
+
+        var _temp = me.pageSizes.split(',');
+        var _data = [];
+        for (var i = 0; i < _temp.length; i++) {
+            if (_temp[i]) {
+                _data[_data.length] = { text: _temp[i].toString(), value: _temp[i] };
+            }
+        }
+        var pagess = Ext.create('Ext.data.Store', {
+            fields: ['text', 'value'],
+            data: _data
+        });
+
+        return [
+            "每页",
+            {
+                itemId: 'pageSizes',
+                xtype: "combo",
+                store: pagess,
+                queryMode: 'local',
+                displayField: 'text',
+                valueField: 'value',
+                width: 65,
+                editable: false,
+                showClearTriggers: false,
+                value: me.store.getPageSize(),
+                listeners: {
+                    change: function (obj, v) {
+                        me.store.setPageSize(v);
+                        if (!me._notFireChange) {
+                            me.moveFirst();
+                        }
+                    }
+                }
+            },
+            "条",
+            '-', {
+                itemId: 'first',
+                tooltip: me.firstText,
+                overflowText: me.firstText,
+                iconCls: Ext.baseCSSPrefix + 'tbar-page-first',
+                disabled: true,
+                handler: me.moveFirst,
+                scope: me
+            }, {
+                itemId: 'prev',
+                tooltip: me.prevText,
+                overflowText: me.prevText,
+                iconCls: Ext.baseCSSPrefix + 'tbar-page-prev',
+                disabled: true,
+                handler: me.movePrevious,
+                scope: me
+            },
+            '-',
+            me.beforePageText,
+            {
+                xtype: 'numberfield',
+                itemId: 'inputItem',
+                name: 'inputItem',
+                cls: Ext.baseCSSPrefix + 'tbar-page-number',
+                allowDecimals: false,
+                minValue: 1,
+                hideTrigger: true,
+                enableKeyEvents: true,
+                keyNavEnabled: false,
+                selectOnFocus: true,
+                submitValue: false,
+                // mark it as not a field so the form will not catch it when getting fields
+                isFormField: false,
+                width: me.inputItemWidth,
+                margin: '-1 2 3 2',
+                listeners: inputListeners
+            },
+            {
+                xtype: 'tbtext',
+                itemId: 'afterTextItem',
+                text: Ext.String.format(me.afterPageText, 1)
+            },
+            '-',
+            {
+                itemId: 'next',
+                tooltip: me.nextText,
+                overflowText: me.nextText,
+                iconCls: Ext.baseCSSPrefix + 'tbar-page-next',
+                disabled: true,
+                handler: me.moveNext,
+                scope: me
+            }, {
+                itemId: 'last',
+                tooltip: me.lastText,
+                overflowText: me.lastText,
+                iconCls: Ext.baseCSSPrefix + 'tbar-page-last',
+                disabled: true,
+                handler: me.moveLast,
+                scope: me
+            },
+            '-',
+            {
+                itemId: 'refresh',
+                tooltip: me.refreshText,
+                overflowText: me.refreshText,
+                iconCls: Ext.baseCSSPrefix + 'tbar-loading',
+                disabled: me.store.isLoading(),
+                handler: me.doRefresh,
+                scope: me
+            }];
+    },
+
+    initComponent: function () {
+        var me = this;
+        me.store.on({
+            'beforeUpdatePageInfo': {
+                fn: me.beforeUpdatePageInfo,
+                scope: me
+            },
+            'updatePageInfo': {
+                fn: me.updatePageInfo,
+                scope: me
+            }
+        });
+        me.callParent();
+    },
+    beforeUpdatePageInfo: function () {
+        var me = this;
+        me.mask('正在更新分页信息...');
+    },
+    updatePageInfo: function () {
+        var me = this;
+        me.unmask();
+        me.updateBarInfo();
+    },
+
+    // @private
+    onLoad: function () {
+        var me = this,
+            pageData,
+            currPage,
+            pageCount,
+            afterText,
+            count,
+            isEmpty,
+            item,
+            pageSizes;
+
+        count = me.store.getCount();
+        isEmpty = count === 0;
+        if (!isEmpty) {
+            pageData = me.getPageData();
+            currPage = pageData.currentPage;
+            pageCount = pageData.pageCount;
+
+            // Check for invalid current page.
+            if (currPage > pageCount) {
+                //me.store.loadPage(pageCount);
+                return;
+            }
+
+            afterText = Ext.String.format(me.afterPageText, isNaN(pageCount) ? 1 : pageCount);
+        } else {
+            currPage = 0;
+            pageCount = 0;
+            afterText = Ext.String.format(me.afterPageText, 0);
+        }
+
+        Ext.suspendLayouts();
+        item = me.child('#afterTextItem');
+        if (item) {
+            item.setText(afterText);
+        }
+        item = me.getInputItem();
+        if (item) {
+            item.setDisabled(isEmpty).setValue(currPage);
+        }
+        item = me.child('#pageSizes');
+        if (item) {
+            me._notFireChange = true;
+            item.setValue(me.store.getPageSize());
+            me._notFireChange = false;
+        }
+
+        me.setChildDisabled('#first', currPage === 1 || isEmpty);
+        me.setChildDisabled('#prev', currPage === 1 || isEmpty);
+        me.setChildDisabled('#next', currPage === pageCount || isEmpty);
+        me.setChildDisabled('#last', currPage === pageCount || isEmpty);
+        me.setChildDisabled('#refresh', false);
+        me.setChildDisabled('#go', isEmpty);
+        me.updateInfo();
+        Ext.resumeLayouts(true);
+
+        if (!me.calledInternal) {
+            me.fireEvent('change', me, pageData || me.emptyPageData);
+        }
+    },
+
+    // @private
+    onPagingBlur: function (e) {
+        var me = this,
+            inputItem = this.getInputItem(),
+            pageData = me.getPageData(),
+            pageNum;
+
+        if (inputItem) {
+            pageNum = me.readPageFromInput(pageData);
+            if (pageNum !== false) {
+                pageNum = Math.min(Math.max(1, pageNum), pageData.pageCount);
+                if (pageNum !== pageData.currentPage && me.fireEvent('beforechange', me, pageNum) !== false) {
+                    me.store.loadPage(pageNum);
+                }
+            }
+            //curPage = this.getPageData().currentPage;
+            //inputItem.setValue(curPage);
+        }
+    }
+});
+
+Ext.define("Nhl.base.GridCopy", {
+    extend: 'Ext.grid.Panel',
+    alias: 'widget.cisgridcopy',
+    requires: [
+        'Nhl.ux.CisPagingToolBarIn'
+    ],
+    isPage: true,
+    pageSizes: null,
+    loadMask: false,
+    multiColumnSort: true,
+    initComponent: function () {
+        var me = this,
+            vm,
+            bindStoreName,
+            store;
+
+        //增加页码条默认功能
+        if (me.isPage) {
+            try {
+                try {
+                    store = me.store || me.getBind().store.getValue();
+                } catch (e) { }
+
+                if (!store || store.isEmptyStore) {
+                    if (me.config.bind && me.config.bind.store) {
+                        bindStoreName = Ext.String.trim(me.config.bind.store).replace('{', '').replace('}', '');
+                        vm = me.getViewModel();
+                        store = vm.getStore(bindStoreName);
+                    }
+                }
+                if (me.buttons && me.buttons.length > 0) {
+                    Ext.apply(this, {
+                        dockedItems: {
+                            xtype: 'panel',
+                            dock: 'bottom',
+                            layout: {
+                                type: 'table',
+                                columns: 2,
+                                tableAttrs: {
+                                    style: {
+                                        width: '100%',
+                                        background:'#ececec'
+                                    }
+                                }
+                            },
+                            items: [{
+                                xtype: 'panel',
+                                colspan: 1,
+                                items: [
+                                    new Nhl.ux.CisPagingToolBarIn({
+                                        displayInfo: true,
+                                        displayMsg: '显示{0}-{1}&nbsp;共{2}条',
+                                        store: store,
+                                        pageSizes: me.pageSizes || '5,10,50,100'
+                                    })
+                                ]
+                            },{
+                                xtype: 'panel',
+                                colspan: 1,
+                                buttons: me.buttons
+                            }
+
+                            ]
+                        }
+                    });
+                    me.buttons = undefined;
+                } else {
+                    Ext.apply(this, {
+                        bbar: new Nhl.ux.CisPagingToolBarIn({
+                            displayInfo: true,
+                            displayMsg: '显示{0}-{1}&nbsp;共{2}条',
+                            store: store,
+                            pageSizes: me.pageSizes || '5,10,50,100'
+                        })
+                    });
+                }
+            } catch (e) {
+                Ext.log.error(e.stack);
+            }
+        }
+        me.viewConfig = Ext.apply({
+            loadMask: me.loadMask,
+            //增加行样式设置功能
+            getRowClass: function (record, rowIndex, rowParams, store) {
+                var css = '';
+                if (record.data._isDisabled) {
+                    css = 'x-grid-disabled ';
+                }
+                if (record._rowclass || record.data._rowclass) {
+                    css += (record._rowclass || record.data._rowclass);
+                }
+                if (css) {
+                    return css;
+                }
+            }
+        }, me.viewConfig);
+
+        me.callParent(arguments);
+    }
+});
+
+```
