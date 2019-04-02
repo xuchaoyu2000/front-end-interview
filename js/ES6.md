@@ -1,5 +1,5 @@
 # 初入Es6
-### 作者：black徐 
+### 作者：BlackXu 
 ### 参考 ： [阮一峰：ES6入门](http://es6.ruanyifeng.com/) 
 ## let与const
 ### let
