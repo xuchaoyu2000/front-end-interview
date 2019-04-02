@@ -1,5 +1,5 @@
 ## 初入Scss/Sass
-### 作者：black徐
+### 作者：BlackXu
 ## linux版本安装
 - 通过安装ruby来安装Sass
 - `sudo apt-get install ruby-dev`
