@@ -8,6 +8,10 @@
 - [Canvas学习总结](https://github.com/xuchaoyu2000/myMind/blob/master/js/Canvas.md)
 - [FCC里的所有算法学习总结ES6版](https://github.com/xuchaoyu2000/myMind/blob/master/js/Code.md)
 - [正则表达式学习总结](https://github.com/xuchaoyu2000/myMind/blob/master/js/Regular.md)
+- [循环的学习总结](https://github.com/xuchaoyu2000/myMind/blob/master/js/Traverse.md)
+
+### Vue部分学习
+- [Vue的学习总结](https://github.com/xuchaoyu2000/myMind/blob/master/vue/Vue.md)
 
 ### 杂项学习
 - [MarkdownPad2使用心得](https://github.com/xuchaoyu2000/myMind/blob/master/other/MarkdownPad2.md)
