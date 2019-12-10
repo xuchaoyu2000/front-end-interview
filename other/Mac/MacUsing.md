@@ -7,6 +7,7 @@
 - cmd + l : 焦点移到地址栏
 - cmd + t : 新增标签页
 - cmd + r : 刷新
+- cmd + shift + r : 强制刷新
 - cmd + 空格 : 打开搜索栏
 - 打开搜索栏后输入ter : 打开终端
 - cmd + shift + n : 新建文件夹
